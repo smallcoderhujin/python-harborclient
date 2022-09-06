@@ -44,9 +44,6 @@ class HTTPClient(object):
         self.api_version = api_version or api_versions.APIVersion()
         self.timings = timings
         self.http_log_debug = http_log_debug
-        self.sid = ''
-        self.sid_old = 'beegosessionID'
-        self.sid_new = 'sid'
         # Has no protocol, use http
         if not urlparse(baseurl).scheme:
             self.baseurl = 'http://' + baseurl
@@ -69,7 +66,6 @@ class HTTPClient(object):
         self.times = []  # [("item", starttime, endtime), ...]
 
         self._logger = logging.getLogger(__name__)
-        self.session_id = None
 
         if self.http_log_debug and not self._logger.handlers:
             # Logging level is already set on the root logger
@@ -83,14 +79,6 @@ class HTTPClient(object):
                 # have to set it up here on WARNING (its original level)
                 # otherwise we will get all the requests logging messages
                 rql.setLevel(logging.WARNING)
-
-    def unauthenticate(self):
-        """Forget all of our authentication information."""
-        requests.get(
-            '%s://%s/logout' % (self.protocol, self.host),
-            cookies={self.sid: self.session_id},
-            verify=self.verify_cert)
-        logging.debug("Successfully logout")
 
     def get_timings(self):
         return self.times
@@ -154,11 +142,6 @@ class HTTPClient(object):
             value = headers[name]
             header = ' -H "%s: %s"' % (name, value)
             string_parts.append(header)
-        cookies = kwargs['cookies']
-        for name in sorted(cookies.keys()):
-            value = cookies[name]
-            cookie = header = ' -b "%s: %s"' % (name, value)
-            string_parts.append(cookie)
         if 'data' in kwargs:
             data = json.loads(kwargs['data'])
             string_parts.append(" -d '%s'" % json.dumps(data))
@@ -214,29 +197,14 @@ class HTTPClient(object):
         return body
 
     def _cs_request(self, url, method, **kwargs):
-        if not self.session_id:
-            self.authenticate()
         # Perform the request once. If we get a 401 back then it
         # might be because the auth token expired, so try to
         # re-authenticate and try again. If it still fails, bail.
-        try:
-            body = self._time_request(
-                url,
-                method,
-                cookies={self.sid: self.session_id},
-                **kwargs)
-            return body
-        except exceptions.Unauthorized as e:
-            try:
-                # first discard auth token, to avoid the possibly expired
-                # token being re-used in the re-authentication attempt
-                self.unauthenticate()
-                # overwrite bad token
-                self.authenticate()
-                body = self._time_request(url, method, **kwargs)
-                return body
-            except exceptions.Unauthorized:
-                raise e
+        body = self._time_request(
+            url,
+            method,
+            **kwargs)
+        return body
 
     def get(self, url, **kwargs):
         return self._cs_request(url, 'GET', **kwargs)
@@ -249,54 +217,6 @@ class HTTPClient(object):
 
     def delete(self, url, **kwargs):
         return self._cs_request(url, 'DELETE', **kwargs)
-
-    def authenticate(self):
-        if not self.baseurl:
-            msg = ("Authentication requires 'baseurl', which should be "
-                   "specified in '%s'") % self.__class__.__name__
-            raise exceptions.AuthorizationFailure(msg)
-
-        if not self.username:
-            msg = ("Authentication requires 'username', which should be "
-                   "specified in '%s'") % self.__class__.__name__
-            raise exceptions.AuthorizationFailure(msg)
-
-        if not self.password:
-            msg = ("Authentication requires 'password', which should be "
-                   "specified in '%s'") % self.__class__.__name__
-            raise exceptions.AuthorizationFailure(msg)
-
-        try:
-            resp = requests.post(
-                self.baseurl + "/c/login",
-                data={'principal': self.username,
-                      'password': self.password},
-                verify=self.verify_cert)
-        except requests.exceptions.SSLError:
-            msg = ("Certificate verify failed, please use '--os-cacert' option"
-                   " to specify a CA bundle file to use in verifying a TLS"
-                   " (https) server certificate or use '--insecure' option"
-                   " to explicitly allow client to perform insecure"
-                   " TLS (https) requests.")
-            raise exceptions.AuthorizationFailure(msg)
-        if resp.status_code == 200:
-            self.session_id = resp.cookies.get(self.sid_old)
-            self.sid = self.sid_old
-            if not self.session_id:
-                logging.debug("On newer version, cookie name is sid")
-                self.session_id = resp.cookies.get(self.sid_new)
-                self.sid = self.sid_new
-            if not self.session_id:
-                reason = "Tried cookie with names '%s' and '%s' and still no luck" % (
-                        self.sid_old, self.sid_new)
-                raise exceptions.AuthorizationFailure(reason)
-            logging.debug(
-                "Successfully login, session id: %s" % self.session_id)
-        if resp.status_code >= 400:
-            msg = resp.text or ("The request you have made requires "
-                                "authentication. (HTTP 401)")
-            reason = '{"reason": "%s", "message": "%s"}' % (resp.reason, msg)
-            raise exceptions.AuthorizationFailure(reason)
 
 
 def _construct_http_client(username=None,

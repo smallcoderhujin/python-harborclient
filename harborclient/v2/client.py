@@ -60,14 +60,3 @@ class Client(object):
 
     def reset_timings(self):
         self.client.reset_timings()
-
-    def authenticate(self):
-        """Authenticate against the server.
-
-        Normally this is called automatically when you first access the API,
-        but you can call this method to force authentication right now.
-
-        Returns on success; raises :exc:`exceptions.Unauthorized` if the
-        credentials are wrong.
-        """
-        self.client.authenticate()

@@ -555,8 +555,8 @@ def do_info(cs, args):
     info = cs.systeminfo.get()
     try:
         volumes = cs.systeminfo.get_volumes()
-        info['disk_total'] = volumes['storage']['total']
-        info['disk_free'] = volumes['storage']['free']
+        info['disk_total'] = volumes['storage'][0]['total']
+        info['disk_free'] = volumes['storage'][0]['free']
     except exp.Forbidden:
         # Only admin can get volumes
         pass

@@ -326,13 +326,6 @@ class HarborShell(object):
             insecure=insecure,
             cacert=cacert,
             timeout=args.timeout)
-        try:
-            self.cs.authenticate()
-        except exc.Unauthorized:
-            raise exc.CommandError("Invalid Harbor credentials.")
-        except exc.AuthorizationFailure as e:
-            raise exc.CommandError("Unable to authorize user '%s': %s"
-                                   % (os_username, e))
         args.func(self.cs, args)
         if args.timings:
             self._dump_timings(self.times + self.cs.get_timings())
