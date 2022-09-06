@@ -319,28 +319,31 @@ def do_list(cs, args):
     project_id = args.project_id
     if not project_id:
         project_id = cs.client.project
-    repositories = cs.repositories.list(project_id)
-    data = []
-    for repo in repositories:
-        tags = cs.repositories.list_tags(repo['name'])['tags']
-        for tag in tags:
-            item = repo.copy()
-            manifest = cs.repositories.get_manifests(item['name'], tag)
-            size = 0
+    pros = cs.repositories.list_projects()
+    for pro in pros:
+        repositories = cs.repositories.list(pro['name'])
+        data = []
+        for repo in repositories:
+            tags = cs.repositories.list_tags(repo['name'])['tags']
+            for tag in tags:
+                item = repo.copy()
+                manifest = cs.repositories.get_manifests(item['name'], tag)
+                size = 0
 
-            for layer in manifest['layers']:
-                size += layer['size']
-            item['size'] = size
+                for layer in manifest['layers']:
+                    size += layer['size']
+                item['size'] = size
 
-            if tag != 'latest':
-                item['name'] = repo['name'] + ":" + tag
-            data.append(item)
-    fields = [
-        "name", 'project_id', 'size',
-        "tags_count", "star_count", "pull_count",
-        "update_time"
-    ]
-    utils.print_list(data, fields, sortby=args.sortby)
+                if tag != 'latest':
+                    item['name'] = repo['name'] + ":" + tag
+                data.append(item)
+        fields = [
+            "name", 'project_id', 'size',
+            "tags_count", "star_count", "pull_count",
+            "update_time"
+        ]
+        print('='*20, 'Project(%s) info' % pro['name'], '='*20)
+        utils.print_list(data, fields, sortby=args.sortby)
 
 
 @utils.arg(

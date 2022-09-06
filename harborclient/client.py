@@ -186,7 +186,10 @@ class HTTPClient(object):
 
         self.http_log_req(method, url, kwargs)
 
-        resp = requests.request(method, url, auth=self.auth, verify=self.verify_cert, **kwargs)
+        try:
+            resp = requests.request(method, url, auth=self.auth, verify=self.verify_cert, **kwargs)
+        except requests.exceptions.SSLError:
+            resp = requests.request(method, url, auth=self.auth, verify=False, **kwargs)
         self.http_log_resp(resp)
         if resp.status_code >= 400:
             raise exceptions.from_response(resp, resp.text, url, method)

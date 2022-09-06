@@ -8,8 +8,11 @@ class RepositoryManager(base.Manager):
 
     def list(self, project):
         """Get repositories accompany with relevant project and repo name."""
-        repositories = self._list("/repositories?project_id=%s" % project)
+        repositories = self._list("/projects/%s/repositories" % project)
         return repositories
+
+    def list_projects(self):
+        return self._list("/projects")
 
     def delete_repository(self, repo_name):
         """Delete the repository."""
