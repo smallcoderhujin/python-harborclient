@@ -33,13 +33,7 @@ Harbor通过Web界面可以方便地管理用户、租户以及镜像仓库等�
 
 ### 3.1 本地安装
 
-harborclient已经上传到pypi上，可以直接通过pip安装:
-
-```sh
-pip install python-harborclient
-```
-
-也可以直接从源码编译，harborclient使用纯Python开发，安装和部署非常简单，首先从github下拉取源代码:
+直接从源码编译，harborclient使用纯Python开发，安装和部署非常简单，首先从github下拉取源代码:
 
 ```bash
 git clone https://github.com/int32bit/harborclient
@@ -55,8 +49,7 @@ sudo python setup.py install
 安装过程中需要从互联网下载依赖包，可能需要等待几分钟。完成后运行以下命令验证是否正常运行:
 
 ```
-$ harbor --os-baseurl http://localhost --os-username admin --os-project 1 info
-password: ******
+$ harbor --os-baseurl http://localhost --os-username admin --os-password xxx info
 +------------------------------+---------------------+
 | Property                     | Value               |
 +------------------------------+---------------------+
@@ -76,7 +69,7 @@ password: ******
 +------------------------------+---------------------+
 ```
 
-以上`--os-baseurl`是Harbor的URL地址，`--os-username`是用户名，`--os-password`是密码， `--os-project`是默认的项目id，如果运行正常，将返回Harbor的信息。
+以上`--os-baseurl`是Harbor的URL地址，`--os-username`是用户名，`--os-password`是密码， 如果运行正常，将返回Harbor的信息。
 
 每次都需要输入用户名和密码特别麻烦，harborclieng支持RC文件，从系统环境变量中读取用户信息，以`admin`用户为例，创建`~/.admin-harborrc`文件，内容如下:
 
@@ -84,7 +77,6 @@ password: ******
 export HARBOR_USERNAME=admin
 export HARBOR_PASSWORD=Harbor12345
 export HARBOR_URL=http://localhost
-export HARBOR_PROJECT=1
 ```
 
 `source`使环境变量生效：
@@ -107,12 +99,6 @@ $ harbor user-list
 
 ### 3.2 在Docker中运行
 
-更建议使用Docker容器运行。harborclient托管在docker hub中，可以直接拉取已经构建的镜像到本地:
-
-```bash
-docker pull krystism/harborclient
-```
-
 docker hub中的镜像不一定是最新的，建议从源码中build镜像，在项目根下运行:
 
 ```sh
@@ -126,7 +112,6 @@ $ docker run \
  -e HARBOR_URL="http://localhost" \
  -e HARBOR_USERNAME="admin" \
  -e HARBOR_PASSWORD="Harbor12345" \
- -e HARBOR_PROJECT=1" \
  --rm krystism/harborclient harbor user-list
 +---------+----------+----------+----------------------+--------------+---------------+
 | user_id | username | is_admin |        email         |   realname   |    comment    |
@@ -143,7 +128,6 @@ alias harbor='docker run \
  -e HARBOR_URL="http://localhost" \
  -e HARBOR_USERNAME="admin" \
  -e HARBOR_PASSWORD="Harbor12345" \
- -e HARBOR_PROJECT=1" \
  --rm krystism/harborclient harbor'
 ```
 
@@ -201,7 +185,7 @@ $ harbor --insecure list
 ```
 $ harbor
 usage: harbor [--debug] [--timings] [--version] [--os-username <username>]
-              [--os-password <password>] [--os-project <project>]
+              [--os-password <password>]
               [--timeout <timeout>] [--os-baseurl <baseurl>] [--insecure]
               [--os-cacert <ca-certificate>] [--os-api-version <api-version>]
               <subcommand> ...
@@ -437,57 +421,7 @@ Find 3 Repositories:
 +----------------------+--------------+------------+----------------+
 ```
 
-### 6.9 查看复制目标
-
-```
-$ harbor target-list
-+----+----------------------+-------------------------------------+----------+----------+----------------------+
-| id |         name         |               endpoint              | username | password |    creation_time     |
-+----+----------------------+-------------------------------------+----------+----------+----------------------+
-| 1  |     test-target      |      http://192.168.99.101:8888     |  admin   |    -     | 2017-11-02T01:35:30Z |
-| 2  |    test-target-2     |      http://192.168.99.101:9999     |  admin   |    -     | 2017-11-02T13:43:07Z |
-| 3  | int32bit-test-target | http://192.168.99.101:8888/int32bit |  admin   |    -     | 2017-11-02T14:28:54Z |
-+----+----------------------+-------------------------------------+----------+----------+----------------------+
-```
-
-### 6.10 ping复制目标镜像仓库
-
-```
-$ harbor target-ping 1
-OK
-```
-
-### 6.11 查看复制任务
-
-```
-$ harbor  job-list 1
-+----+----------------------+-----------+----------+----------------------+
-| id |      repository      | operation |  status  |     update_time      |
-+----+----------------------+-----------+----------+----------------------+
-| 1  |   int32bit/busybox   |  transfer | finished | 2017-11-02T01:35:31Z |
-| 2  |   int32bit/golang    |  transfer | finished | 2017-11-02T01:35:31Z |
-| 3  | int32bit/hello-world |  transfer | finished | 2017-11-02T01:35:31Z |
-+----+----------------------+-----------+----------+----------------------+
-```
-
-### 6.12 查看复制任务日志
-
-```
-$ harbor job-log  1
-2017-11-02T01:35:30Z [INFO] initializing: repository: int32bit/busybox, tags: [], source URL: http://registry:5000, destination URL: http://192.168.99.101:8888, insecure: false, destination user: admin
-2017-11-02T01:35:30Z [INFO] initialization completed: project: int32bit, repository: int32bit/busybox, tags: [latest], source URL: http://registry:5000, destination URL: http://192.168.99.101:8888, insecure: false, destination user: admin
-2017-11-02T01:35:30Z [WARNING] the status code is 409 when creating project int32bit on http://192.168.99.101:8888 with user admin, try to do next step
-2017-11-02T01:35:30Z [INFO] manifest of int32bit/busybox:latest pulled successfully from http://registry:5000: sha256:030fcb92e1487b18c974784dcc110a93147c9fc402188370fbfd17efabffc6af
-2017-11-02T01:35:30Z [INFO] all blobs of int32bit/busybox:latest from http://registry:5000: [sha256:54511612f1c4d97e93430fc3d5dc2f05dfbe8fb7e6259b7351deeca95eaf2971 sha256:03b1be98f3f9b05cb57782a3a71a44aaf6ec695de5f4f8e6c1058cd42f04953e]
-2017-11-02T01:35:31Z [INFO] blob sha256:54511612f1c4d97e93430fc3d5dc2f05dfbe8fb7e6259b7351deeca95eaf2971 of int32bit/busybox:latest already exists in http://192.168.99.101:8888
-2017-11-02T01:35:31Z [INFO] blob sha256:03b1be98f3f9b05cb57782a3a71a44aaf6ec695de5f4f8e6c1058cd42f04953e of int32bit/busybox:latest already exists in http://192.168.99.101:8888
-2017-11-02T01:35:31Z [INFO] blobs of int32bit/busybox:latest need to be transferred to http://192.168.99.101:8888: []
-2017-11-02T01:35:31Z [INFO] manifest of int32bit/busybox:latest exists on source registry http://registry:5000, continue manifest pushing
-2017-11-02T01:35:31Z [INFO] manifest of int32bit/busybox:latest exists on destination registry http://192.168.99.101:8888, skip manifest pushing
-2017-11-02T01:35:31Z [INFO] no tag needs to be replicated, next state is "finished"
-```
-
-### 6.13 查看资源统计
+### 6.9 查看资源统计
 
 ```
 $ harbor usage
@@ -503,7 +437,7 @@ $ harbor usage
 +-----------------------+-------+
 ```
 
-### 6.14 查看harbor信息
+### 6.10 查看harbor信息
 
 ```
 $ harbor  info
@@ -526,7 +460,7 @@ $ harbor  info
 +------------------------------+---------------------+
 ```
 
-### 6.15 查看harbor配置信息
+### 6.12 查看harbor配置信息
 
 ```
 $ harbor get-conf
@@ -555,7 +489,7 @@ $ harbor get-conf
 +------------------------------+-------------------------------------------------------+----------+
 ```
 
-### 6.16 修改用户密码
+### 6.13 修改用户密码
 
 ```
 $ harbor change-password int32bit
@@ -569,7 +503,7 @@ Update password successfully.
 ### 6.17 设置用户为管理员
 
 ```
-$ harbor promote int32bit
+$ harbor set-admin int32bit
 Promote user 'int32bit' as administrator successfully.
 ```
 

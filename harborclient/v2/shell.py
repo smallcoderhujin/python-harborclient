@@ -6,6 +6,7 @@ import re
 
 from oslo_utils import strutils
 
+import harborclient.exceptions
 from harborclient import exceptions as exp
 from harborclient import utils
 
@@ -339,7 +340,7 @@ def do_list(cs, args):
             "tags_count", "star_count", "pull_count",
             "update_time"
         ]
-        print('='*20, 'Project(%s) info' % pro['name'], '='*20)
+        print('=' * 20, 'Project(%s) info' % pro['name'], '=' * 20)
         utils.print_list(data, fields, sortby=args.sortby)
 
 
@@ -530,18 +531,16 @@ def do_usage(cs, args):
     help='Sort key.')
 def do_logs(cs, args):
     """Get recent logs of the projects which the user is a member of."""
-    logs = cs.logs.list() or []
-    for log in logs:
-        repo = log['repo_name']
-        tag = None
-        if log['repo_tag'] != 'N/A':
-            tag = log['repo_tag']
-        if tag:
-            repo += ":%s" % tag
-        log['repository'] = repo
-    fields = ['log_id', 'op_time', 'username',
-              'project_id', 'operation', 'repository']
-    utils.print_list(logs, fields, sortby=args.sortby)
+    pros = cs.repositories.list_projects()
+    for pro in pros:
+        try:
+            logs = cs.logs.list(pro['name'])
+        except harborclient.exceptions.Forbidden:
+            logs = [{}]
+        print('=' * 20, 'Project %s logs' % pro['name'], '=' * 20)
+        fields = ['id', 'op_time', 'username',
+                  'resource', 'operation', 'resource_type']
+        utils.print_list(logs, fields, sortby=args.sortby)
 
 
 def do_info(cs, args):
@@ -584,43 +583,10 @@ def do_get_conf(cs, args):
     for key in configurations:
         item = {}
         item['name'] = key
-        item['value'] = configurations[key]['value']
-        item['editable'] = configurations[key]['editable']
+        item['value'] = configurations[key].get('value')
+        item['editable'] = configurations[key].get('editable')
         data.append(item)
     utils.print_list(data, ['name', 'value', 'editable'], sortby='name')
-
-
-def do_target_list(cs, args):
-    """List filters targets."""
-    targets = cs.targets.list()
-    fields = ['id', 'name', 'endpoint',
-              'username', 'password', 'creation_time']
-    utils.print_list(targets, fields)
-
-
-@utils.arg(
-    'target',
-    metavar='<target>',
-    help="The target name or id.")
-def do_target_ping(cs, args):
-    """Ping validates target."""
-    target = None
-    if is_id(args.target):
-        target = args.target
-    else:
-        targets = cs.targets.list()
-        for t in targets:
-            if t['name'] == args.target:
-                target = t['id']
-                break
-    if not target:
-        print("target '%s' not found!" % args.target)
-        return 1
-    try:
-        cs.targets.ping(target)
-        print("OK")
-    except Exception as e:
-        print("Can not ping target: %s" % e)
 
 
 @utils.arg(
@@ -652,27 +618,3 @@ def do_policy_list(cs, args):
               "enabled", "start_time", "cron_str",
               "creation_time"]
     utils.print_list(policies, fields, sortby='id')
-
-
-@utils.arg(
-    'policy_id',
-    metavar='<policy_id>',
-    help="The policy id.")
-def do_job_list(cs, args):
-    """List filters jobs according to the policy and repository."""
-    jobs = cs.jobs.list(args.policy_id)
-    for job in jobs:
-        if job['tags']:
-            job['name'] += ":" + job['tags']
-    fields = ['id', 'repository', 'operation', 'status', 'update_time']
-    utils.print_list(jobs, fields, sortby='id')
-
-
-@utils.arg(
-    'job_id',
-    metavar='<job_id>',
-    help="The job id.")
-def do_job_log(cs, args):
-    """Get job logs."""
-    log = cs.jobs.get_log(args.job_id)
-    print(log)
