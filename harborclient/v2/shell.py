@@ -316,9 +316,6 @@ def do_project_create(cs, args):
     help='Sort key.')
 def do_list(cs, args):
     """Get repositories accompany with relevant project and repo name."""
-    project_id = args.project_id
-    if not project_id:
-        project_id = cs.client.project
     pros = cs.repositories.list_projects()
     for pro in pros:
         repositories = cs.repositories.list(pro['name'])
@@ -442,39 +439,34 @@ def do_tags_delete_reg(cs, args):
     help="Repository name, for example: int32bit/ubuntu:14.04.")
 def do_show(cs, args):
     """Show specific repository detail infomation."""
-    project = args.project_id
-    if not project:
-        project = cs.client.project
+
     repo = args.repository
     tag_index = repo.find(':')
+    tag = ''
     if tag_index != -1:
         tag = repo[tag_index + 1:]
         repo = repo[:tag_index]
-    else:
-        tag = "latest"
     if repo.find('/') == -1:
         repo = "library/" + repo
-    repos = cs.repositories.list(project)
-    found_repo = None
-    for r in repos:
-        if r['name'] == repo:
-            found_repo = r
-            break
-    if not found_repo:
-        print("Image '%s' not found." % repo)
-        return
-    tags = cs.repositories.list_tags(found_repo['name'])
-    found_tag = None
-    for t in tags:
-        if t['name'] == tag:
-            found_tag = t
-            break
-    if not found_tag:
-        print("Image '%s' with tag '%s' not found." % (repo, tag))
-        return
-    for key in found_tag:
-        found_repo['tag_' + key] = found_tag[key]
-    utils.print_dict(found_repo)
+    pros = cs.repositories.list_projects()
+    for pro in pros:
+        repos = cs.repositories.list(pro['name'])
+        found_repo = None
+        for r in repos:
+            if r['name'] == repo:
+                found_repo = r
+                break
+        if not found_repo:
+            continue
+
+        if not tag:
+            tags = cs.repositories.list_tags(found_repo['name'])['tags']
+            found_repo['tags'] = tags
+            utils.print_dict(found_repo)
+        else:
+            found_repo['tag'] = tag
+            utils.print_dict(found_repo)
+        break
 
 
 @utils.arg(
