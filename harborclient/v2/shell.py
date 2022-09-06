@@ -322,19 +322,18 @@ def do_list(cs, args):
     repositories = cs.repositories.list(project_id)
     data = []
     for repo in repositories:
-        tags = cs.repositories.list_tags(repo['name'])
+        tags = cs.repositories.list_tags(repo['name'])['tags']
         for tag in tags:
             item = repo.copy()
-            manifest = cs.repositories.get_manifests(item['name'],
-                                                     tag['name'])
+            manifest = cs.repositories.get_manifests(item['name'], tag)
             size = 0
 
-            for layer in manifest['manifest']['layers']:
+            for layer in manifest['layers']:
                 size += layer['size']
             item['size'] = size
 
-            if tag['name'] != 'latest':
-                item['name'] = repo['name'] + ":" + tag['name']
+            if tag != 'latest':
+                item['name'] = repo['name'] + ":" + tag
             data.append(item)
     fields = [
         "name", 'project_id', 'size',

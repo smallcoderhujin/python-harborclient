@@ -19,7 +19,7 @@ class RepositoryManager(base.Manager):
     def list_tags(self, repo_name):
         """Get the tag of the repository."""
         return self.api.client.get(
-            "/repositories/%s/tags" % repo_name)
+            "/%s/tags/list" % repo_name)
 
     def delete_tags(self, repo_name, tag_name):
         """Delete the tag of the repository."""
@@ -29,7 +29,7 @@ class RepositoryManager(base.Manager):
     def get_manifests(self, repo_name, tag):
         """Get manifests of a relevant repository."""
         return self.api.client.get(
-            "/repositories/%(repo_name)s/tags/%(tag)s/manifest"
+            "/%(repo_name)s/manifests/%(tag)s"
             % {"repo_name": repo_name, "tag": tag})
 
     def get_top(self, count):

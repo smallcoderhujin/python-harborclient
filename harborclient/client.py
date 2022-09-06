@@ -9,6 +9,7 @@ from six.moves.urllib.parse import urlparse
 
 from oslo_utils import importutils
 import requests
+from requests.auth import HTTPBasicAuth
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 try:
@@ -51,6 +52,7 @@ class HTTPClient(object):
         self.protocol = parsed_url.scheme
         self.host = parsed_url.hostname
         self.port = parsed_url.port
+        self.auth = HTTPBasicAuth(self.username, self.password)
         if timeout is not None:
             self.timeout = float(timeout)
         else:
@@ -167,7 +169,10 @@ class HTTPClient(object):
                            })
 
     def request(self, url, method, **kwargs):
-        url = self.baseurl + "/api" + url
+        if 'tags' in url or 'manifests' in url:
+            url = self.baseurl + "/v2" + url
+        else:
+            url = self.baseurl + "/api/v2.0" + url
         kwargs.setdefault('headers', kwargs.get('headers', {}))
         kwargs['headers']['User-Agent'] = self.USER_AGENT
         kwargs['headers']['Accept'] = 'application/json'
@@ -181,7 +186,7 @@ class HTTPClient(object):
 
         self.http_log_req(method, url, kwargs)
 
-        resp = requests.request(method, url, verify=self.verify_cert, **kwargs)
+        resp = requests.request(method, url, auth=self.auth, verify=self.verify_cert, **kwargs)
         self.http_log_resp(resp)
         if resp.status_code >= 400:
             raise exceptions.from_response(resp, resp.text, url, method)
